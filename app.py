@@ -90,7 +90,7 @@ if compile_btn:
                     label = node.__class__.__name__
                     for k, v in vars(node).items():
                         if v is None or isinstance(v, (str, int, float, bool)):
-                            val_str = str(v).replace('"', "'").replace('\n', ' ')
+                            val_str = str(v).replace('"', "'").replace('\n', ' ').replace('<', '&lt;').replace('>', '&gt;')
                             label += f"<br/>{k}: {val_str}"
                     code += f'{current_id}["{label}"]\n'
                     if parent_id:
@@ -103,7 +103,7 @@ if compile_btn:
                         if not (v is None or isinstance(v, (str, int, float, bool))):
                             code += generate_mermaid_ast(v, current_id, node_counter, link_label=k)
                 else:
-                    label = str(node).replace('"', "'").replace('\n', ' ')
+                    label = str(node).replace('"', "'").replace('\n', ' ').replace('<', '&lt;').replace('>', '&gt;')
                     code += f'{current_id}["{label}"]\n'
                     if parent_id:
                         if link_label:
