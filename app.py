@@ -74,18 +74,58 @@ if compile_btn:
             ast = parser.parse()
             st.success("AST generated successfully (check underlying structures).")
             
-            def ast_to_dict(n):
-                if isinstance(n, list):
-                    return [ast_to_dict(i) for i in n]
-                elif hasattr(n, '__dict__'):
-                    res = {"NodeType": n.__class__.__name__}
-                    for k, v in vars(n).items():
-                        res[k] = ast_to_dict(v)
-                    return res
+            def generate_mermaid_ast(node, parent_id=None, node_counter=None, link_label=""):
+                if node_counter is None: node_counter = [0]
+                code = ""
+                current_id = f"N{node_counter[0]}"
+                node_counter[0] += 1
+                
+                if isinstance(node, list):
+                    if parent_id is None:
+                        code += f'{current_id}["Program"]\n'
+                        parent_id = current_id
+                    for i, child in enumerate(node):
+                        code += generate_mermaid_ast(child, parent_id, node_counter, link_label=f"[{i}]")
+                elif hasattr(node, '__dict__'):
+                    label = node.__class__.__name__
+                    for k, v in vars(node).items():
+                        if v is None or isinstance(v, (str, int, float, bool)):
+                            val_str = str(v).replace('"', '&quot;').replace('\n', ' ').replace('<', '&lt;').replace('>', '&gt;')
+                            label += f"<br/><i>{k}:</i> {val_str}"
+                    code += f'{current_id}["{label}"]\n'
+                    if parent_id:
+                        if link_label:
+                            code += f'{parent_id} -- "{link_label}" --> {current_id}\n'
+                        else:
+                            code += f'{parent_id} --> {current_id}\n'
+                    for k, v in vars(node).items():
+                        if not (v is None or isinstance(v, (str, int, float, bool))):
+                            code += generate_mermaid_ast(v, current_id, node_counter, link_label=k)
                 else:
-                    return n
-            
-            st.json(ast_to_dict(ast))
+                    label = str(node).replace('"', '&quot;').replace('\n', ' ').replace('<', '&lt;').replace('>', '&gt;')
+                    code += f'{current_id}["{label}"]\n'
+                    if parent_id:
+                        if link_label:
+                            code += f'{parent_id} -- "{link_label}" --> {current_id}\n'
+                        else:
+                            code += f'{parent_id} --> {current_id}\n'
+                return code
+
+            import streamlit.components.v1 as components
+            mermaid_code = "graph TD\n" + generate_mermaid_ast(ast)
+            components.html(
+                f"""
+                <div class="mermaid" style="display: flex; justify-content: center;">
+                    {mermaid_code}
+                </div>
+                <script type="module">
+                    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+                    mermaid.initialize({{ startOnLoad: true, theme: 'dark' }});
+                </script>
+                """,
+                height=600,
+                scrolling=True
+            )
 
         # Phase 3: Semantic Analysis
         with st.expander("3. Semantic Analysis", expanded=False):
