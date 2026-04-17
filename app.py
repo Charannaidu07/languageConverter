@@ -74,76 +74,58 @@ if compile_btn:
             ast = parser.parse()
             st.success("AST generated successfully (check underlying structures).")
             
-            def generate_mermaid_ast(node, parent_id=None, node_counter=None, link_label=""):
+            from streamlit_agraph import agraph, Node, Edge, Config
+            
+            nodes = []
+            edges = []
+            
+            def build_agraph_ast(node, parent_id=None, node_counter=None, link_label=""):
                 if node_counter is None: node_counter = [0]
-                code = ""
                 current_id = f"N{node_counter[0]}"
                 node_counter[0] += 1
                 
                 if isinstance(node, list):
                     if parent_id is None:
-                        code += f'{current_id}["Program"]\n'
+                        nodes.append(Node(id=current_id, label="Program", shape="box", color="#4CAF50", font={"color": "white"}))
                         parent_id = current_id
                     for i, child in enumerate(node):
-                        code += generate_mermaid_ast(child, parent_id, node_counter, link_label=f"[{i}]")
+                        build_agraph_ast(child, parent_id, node_counter, link_label=f"[{i}]")
                 elif hasattr(node, '__dict__'):
                     label = node.__class__.__name__
                     for k, v in vars(node).items():
                         if v is None or isinstance(v, (str, int, float, bool)):
-                            val_str = str(v).replace('"', "'")
-                            # Use literal newlines as Mermaid natively handles them
-                            label += f"\\n{k}: {val_str}"
-                    code += f'{current_id}["{label}"]\n'
+                            label += f"\n{k}: {v}"
+                            
+                    nodes.append(Node(id=current_id, label=label, shape="box", color="#1c2b36", font={"color": "white"}))
                     if parent_id:
-                        if link_label:
-                            safe_link = link_label.replace('"', "'")
-                            code += f'{parent_id} -- "{safe_link}" --> {current_id}\n'
-                        else:
-                            code += f'{parent_id} --> {current_id}\n'
+                        edges.append(Edge(source=parent_id, label=link_label, target=current_id, color="#888"))
+                        
                     for k, v in vars(node).items():
                         if not (v is None or isinstance(v, (str, int, float, bool))):
-                            code += generate_mermaid_ast(v, current_id, node_counter, link_label=k)
+                            build_agraph_ast(v, current_id, node_counter, link_label=k)
                 else:
-                    label = str(node).replace('"', "'")
-                    code += f'{current_id}["{label}"]\n'
+                    label = str(node)
+                    nodes.append(Node(id=current_id, label=label, shape="ellipse", color="#455a64", font={"color": "white"}))
                     if parent_id:
-                        if link_label:
-                            safe_link = link_label.replace('"', "'")
-                            code += f'{parent_id} -- "{safe_link}" --> {current_id}\n'
-                        else:
-                            code += f'{parent_id} --> {current_id}\n'
-                return code
+                        edges.append(Edge(source=parent_id, label=link_label, target=current_id, color="#888"))
 
-            import base64
-            import streamlit.components.v1 as components
+            build_agraph_ast(ast)
             
-            mermaid_code = "graph TD\n" + generate_mermaid_ast(ast)
-            b64_code = base64.b64encode(mermaid_code.encode("utf-8")).decode("utf-8")
-            
-            components.html(
-                f"""
-                <div id="mermaid-container" style="display: flex; justify-content: center; width: 100%;"></div>
-                <script type="module">
-                    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
-                    mermaid.initialize({{ startOnLoad: false, theme: 'dark' }});
-                    
-                    async function renderMermaid() {{
-                        const container = document.getElementById('mermaid-container');
-                        try {{
-                            const decoded = decodeURIComponent(escape(atob('{b64_code}')));
-                            const {{ svg }} = await mermaid.render('mermaid-graph', decoded);
-                            container.innerHTML = svg;
-                        }} catch(err) {{
-                            container.innerHTML = `<p style="color:#ff6b6b; font-family:sans-serif;">Mermaid Render Error: ${{err.message}}</p>`;
-                            console.error(decoded);
-                        }}
-                    }}
-                    renderMermaid();
-                </script>
-                """,
+            config = Config(
+                width="100%",
                 height=600,
-                scrolling=True
+                directed=True, 
+                physics=True, 
+                hierarchical=True,
+                zoom=True,
+                nodeHighlightBehavior=True,
+                highlightColor="#F7A7A6",
             )
+            
+            if nodes:
+                agraph(nodes=nodes, edges=edges, config=config)
+            else:
+                st.info("No AST generated.")
 
         # Phase 3: Semantic Analysis
         with st.expander("3. Semantic Analysis", expanded=False):
