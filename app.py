@@ -90,8 +90,9 @@ if compile_btn:
                     label = node.__class__.__name__
                     for k, v in vars(node).items():
                         if v is None or isinstance(v, (str, int, float, bool)):
-                            val_str = str(v).replace('"', "'").replace('\n', ' ').replace('<', '&lt;').replace('>', '&gt;')
-                            label += f"<br/>{k}: {val_str}"
+                            val_str = str(v).replace('"', "'")
+                            # Use literal newlines as Mermaid natively handles them
+                            label += f"\\n{k}: {val_str}"
                     code += f'{current_id}["{label}"]\n'
                     if parent_id:
                         if link_label:
@@ -103,7 +104,7 @@ if compile_btn:
                         if not (v is None or isinstance(v, (str, int, float, bool))):
                             code += generate_mermaid_ast(v, current_id, node_counter, link_label=k)
                 else:
-                    label = str(node).replace('"', "'").replace('\n', ' ').replace('<', '&lt;').replace('>', '&gt;')
+                    label = str(node).replace('"', "'")
                     code += f'{current_id}["{label}"]\n'
                     if parent_id:
                         if link_label:
@@ -113,16 +114,31 @@ if compile_btn:
                             code += f'{parent_id} --> {current_id}\n'
                 return code
 
+            import base64
             import streamlit.components.v1 as components
+            
             mermaid_code = "graph TD\n" + generate_mermaid_ast(ast)
+            b64_code = base64.b64encode(mermaid_code.encode("utf-8")).decode("utf-8")
+            
             components.html(
                 f"""
-                <div class="mermaid" style="display: flex; justify-content: center;">
-                    {mermaid_code}
-                </div>
+                <div id="mermaid-container" style="display: flex; justify-content: center; width: 100%;"></div>
                 <script type="module">
                     import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
-                    mermaid.initialize({{ startOnLoad: true, theme: 'dark' }});
+                    mermaid.initialize({{ startOnLoad: false, theme: 'dark' }});
+                    
+                    async function renderMermaid() {{
+                        const container = document.getElementById('mermaid-container');
+                        try {{
+                            const decoded = decodeURIComponent(escape(atob('{b64_code}')));
+                            const {{ svg }} = await mermaid.render('mermaid-graph', decoded);
+                            container.innerHTML = svg;
+                        }} catch(err) {{
+                            container.innerHTML = `<p style="color:#ff6b6b; font-family:sans-serif;">Mermaid Render Error: ${{err.message}}</p>`;
+                            console.error(decoded);
+                        }}
+                    }}
+                    renderMermaid();
                 </script>
                 """,
                 height=600,
