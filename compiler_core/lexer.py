@@ -10,7 +10,7 @@ TOKEN_REGEX = {
     'float_lit': r'\d+\.\d+',
     'int_lit': r'\d+',
     'string_lit': r'"[^"]*"',
-    'operators': r'==|!=|<=|>=|\+|-|\*|/|=|<|>',
+    'operators': r'==|!=|<=|>=|\+\+|--|\+|-|\*|/|=|<|>',
     'delimiters': r'\(|\)|\{|\}|;|:|,|\[|\]',
     'whitespace': r'\s+',
 }
@@ -31,6 +31,8 @@ KEYWORD_MAP = {
 }
 
 OPERATOR_MAP = {
+    '++': TokenType.INC,
+    '--': TokenType.DEC,
     '+': TokenType.PLUS,
     '-': TokenType.MINUS,
     '*': TokenType.MUL,

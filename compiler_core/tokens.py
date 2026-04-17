@@ -33,6 +33,8 @@ class TokenType(Enum):
     GT = auto()
     LTE = auto()
     GTE = auto()
+    INC = auto()
+    DEC = auto()
     
     # Delimiters
     LPAREN = auto()

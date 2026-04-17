@@ -56,7 +56,7 @@ with col1:
     source_code = st.text_area("Source Code Input", height=300, value=default_code)
 
 with col2:
-    target_lang = st.selectbox("Target Language", ["java", "c", "cpp", "minilang"])
+    target_lang = st.selectbox("Target Language", ["python", "java", "c", "cpp", "minilang"])
     compile_btn = st.button("Compile & Translate", type="primary", use_container_width=True)
     st.markdown("---")
     
@@ -104,6 +104,28 @@ if compile_btn:
         with col2:
             st.markdown("### Output")
             st.code(target_code, language=target_lang if target_lang != "minilang" else "python")
+            
+            if target_lang == "python":
+                st.markdown("### Execution")
+                import sys
+                from io import StringIO
+                import traceback
+                
+                old_stdout = sys.stdout
+                redirected_output = sys.stdout = StringIO()
+                try:
+                    # Provide an empty dict for globals so it doesn't mess with streamlit's scope
+                    exec(target_code, {})
+                    output = redirected_output.getvalue()
+                    if output:
+                        st.text_area("Console Output:", value=output, height=200)
+                    else:
+                        st.info("Program finished with no output.")
+                except Exception as exec_e:
+                    st.error(f"Execution Error")
+                    st.code(traceback.format_exc(), language="text")
+                finally:
+                    sys.stdout = old_stdout
 
     except Exception as e:
         st.error(f"Compilation Error: {str(e)}")

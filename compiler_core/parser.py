@@ -114,6 +114,16 @@ class Parser:
             return self.parse_print()
         elif tok.type == TokenType.RETURN:
             return self.parse_return()
+        elif tok.type == TokenType.INC:
+            self.advance()
+            name = self.match(TokenType.IDENTIFIER).value
+            self.match(TokenType.SEMICOLON)
+            return Assignment(name, BinOp(Identifier(name), "+", Literal(1, 'int')))
+        elif tok.type == TokenType.DEC:
+            self.advance()
+            name = self.match(TokenType.IDENTIFIER).value
+            self.match(TokenType.SEMICOLON)
+            return Assignment(name, BinOp(Identifier(name), "-", Literal(1, 'int')))
         elif tok.type == TokenType.IDENTIFIER:
             # Could be assignment or func call
             name = self.advance().value
@@ -122,6 +132,14 @@ class Parser:
                 expr = self.parse_expression()
                 self.match(TokenType.SEMICOLON)
                 return Assignment(name, expr)
+            elif self.current().type == TokenType.INC:
+                self.advance()
+                self.match(TokenType.SEMICOLON)
+                return Assignment(name, BinOp(Identifier(name), "+", Literal(1, 'int')))
+            elif self.current().type == TokenType.DEC:
+                self.advance()
+                self.match(TokenType.SEMICOLON)
+                return Assignment(name, BinOp(Identifier(name), "-", Literal(1, 'int')))
             elif self.current().type == TokenType.LPAREN:
                 self.advance()
                 args = []
@@ -171,11 +189,25 @@ class Parser:
         cond = self.parse_expression()
         self.match(TokenType.SEMICOLON)
         
-        # update is typically an assignment
-        name = self.match(TokenType.IDENTIFIER).value
-        self.match(TokenType.ASSIGN)
-        expr = self.parse_expression()
-        update = Assignment(name, expr)
+        # update is typically an assignment or increment
+        tok = self.current()
+        if tok.type in (TokenType.INC, TokenType.DEC):
+            op = self.advance().type
+            name = self.match(TokenType.IDENTIFIER).value
+            sign = "+" if op == TokenType.INC else "-"
+            update = Assignment(name, BinOp(Identifier(name), sign, Literal(1, 'int')))
+        else:
+            name = self.match(TokenType.IDENTIFIER).value
+            if self.current().type == TokenType.INC:
+                self.advance()
+                update = Assignment(name, BinOp(Identifier(name), "+", Literal(1, 'int')))
+            elif self.current().type == TokenType.DEC:
+                self.advance()
+                update = Assignment(name, BinOp(Identifier(name), "-", Literal(1, 'int')))
+            else:
+                self.match(TokenType.ASSIGN)
+                expr = self.parse_expression()
+                update = Assignment(name, expr)
         
         self.match(TokenType.RPAREN)
         self.match(TokenType.LBRACE)
