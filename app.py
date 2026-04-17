@@ -73,8 +73,19 @@ if compile_btn:
             parser = Parser(tokens)
             ast = parser.parse()
             st.success("AST generated successfully (check underlying structures).")
-            # a simple dump of ast
-            st.code(repr(ast), language="python")
+            
+            def ast_to_dict(n):
+                if isinstance(n, list):
+                    return [ast_to_dict(i) for i in n]
+                elif hasattr(n, '__dict__'):
+                    res = {"NodeType": n.__class__.__name__}
+                    for k, v in vars(n).items():
+                        res[k] = ast_to_dict(v)
+                    return res
+                else:
+                    return n
+            
+            st.json(ast_to_dict(ast))
 
         # Phase 3: Semantic Analysis
         with st.expander("3. Semantic Analysis", expanded=False):
